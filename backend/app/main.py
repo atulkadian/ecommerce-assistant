@@ -1,12 +1,18 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
+from sqlalchemy.orm import Session
 import json
 import asyncio
 import logging
-from app.schemas import ChatRequest, ChatResponse
+from typing import List
+from app.schemas import (
+    ChatRequest, ChatResponse, ConversationCreate, 
+    ConversationResponse, ConversationDetail
+)
 from app.agent import agent
+from app.database import get_db, init_db, Conversation, ChatMessage
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,6 +22,10 @@ app = FastAPI(
     description="AI-powered shopping assistant with streaming responses",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def startup():
+    init_db()
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,8 +40,7 @@ app.add_middleware(
 async def root():
     return {
         "message": "E-Commerce Shopping Assistant API",
-        "status": "active",
-        "version": "1.0.0"
+        "status": "active"
     }
 
 
@@ -41,30 +50,51 @@ async def health_check():
 
 
 @app.post("/chat/stream")
-async def chat_stream(request: ChatRequest):
+async def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
     """Stream AI responses in real-time using Server-Sent Events."""
     async def event_generator():
         try:
-            """Convert conversation history to internal format"""
+            # Get or create conversation
+            conversation = None
+            if request.conversation_id:
+                conversation = db.query(Conversation).filter(Conversation.id == request.conversation_id).first()
+            else:
+                # Create new conversation with first message as title (truncated)
+                title = request.message[:50] + "..." if len(request.message) > 50 else request.message
+                conversation = Conversation(title=title)
+                db.add(conversation)
+                db.commit()
+                db.refresh(conversation)
+            
+            if not conversation:
+                raise HTTPException(status_code=404, detail="Conversation not found")
+            
+            # Convert conversation history to internal format
             history = []
             if request.conversation_history:
                 history = [{"role": msg.role, "content": msg.content} for msg in request.conversation_history]
             
-            logger.info(f"Processing message with {len(history)} history items")
-            
-            """ Stream response chunks from the agent """
+            # Stream response and collect full response
+            full_response = ""
             async for chunk in agent.astream(request.message, history):
                 if chunk:
+                    full_response += chunk
                     yield {
                         "event": "message",
                         "data": json.dumps({"content": chunk, "done": False})
                     }
-                    await asyncio.sleep(0.01)  # Small delay for smoother streaming
+                    await asyncio.sleep(0.01)
             
-            """Send completion signal"""
+            # Save messages to database if conversation exists
+            if conversation:
+                db.add(ChatMessage(conversation_id=conversation.id, role="user", content=request.message))
+                db.add(ChatMessage(conversation_id=conversation.id, role="assistant", content=full_response))
+                db.commit()
+            
+            # Send completion signal with conversation_id
             yield {
                 "event": "message",
-                "data": json.dumps({"content": "", "done": True})
+                "data": json.dumps({"content": "", "done": True, "conversation_id": conversation.id})
             }
             
         except Exception as e:
@@ -90,6 +120,38 @@ async def chat_stream(request: ChatRequest):
             }
     
     return EventSourceResponse(event_generator())
+
+
+@app.post("/conversations", response_model=ConversationResponse)
+def create_conversation(conv: ConversationCreate, db: Session = Depends(get_db)):
+    conversation = Conversation(title=conv.title)
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+
+@app.get("/conversations", response_model=List[ConversationResponse])
+def list_conversations(db: Session = Depends(get_db)):
+    return db.query(Conversation).order_by(Conversation.updated_at.desc()).all()
+
+
+@app.get("/conversations/{conversation_id}", response_model=ConversationDetail)
+def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
+
+
+@app.delete("/conversations/{conversation_id}")
+def delete_conversation(conversation_id: int, db: Session = Depends(get_db)):
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    db.delete(conversation)
+    db.commit()
+    return {"message": "Conversation deleted"}
 
 
 @app.post("/chat", response_model=ChatResponse)
