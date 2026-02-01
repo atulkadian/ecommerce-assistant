@@ -23,3 +23,5 @@ out/
 .vscode/
 .DS_Store
 
+#SqLite database files
+*.db
