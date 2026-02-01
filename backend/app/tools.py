@@ -11,6 +11,33 @@ def get_user_cart(user_id: str = "default") -> List[dict]:
     return user_carts[user_id]
 
 
+def normalize_category(category: str) -> str:
+    """Normalize category names to match API expectations"""
+    category_lower = category.lower().strip()
+    
+    # Category mappings
+    category_map = {
+        'men': "men's clothing",
+        "men's": "men's clothing",
+        'mens': "men's clothing",
+        "men's clothing": "men's clothing",
+        "mens clothing": "men's clothing",
+        'women': "women's clothing",
+        "women's": "women's clothing",
+        'womens': "women's clothing",
+        "women's clothing": "women's clothing",
+        "womens clothing": "women's clothing",
+        'electronics': 'electronics',
+        'electronic': 'electronics',
+        'tech': 'electronics',
+        'jewelery': 'jewelery',
+        'jewelry': 'jewelery',
+        'jewellery': 'jewelery'
+    }
+    
+    return category_map.get(category_lower, category)
+
+
 @tool
 async def get_products() -> str:
     """Get all products"""
@@ -52,13 +79,14 @@ async def get_categories() -> str:
 
 @tool
 async def get_products_by_category(category: str) -> str:
-    """Get products from a category"""
+    """Get products from a category. Supports: electronics, jewelery, men's clothing, women's clothing, or variations like 'men', 'women'"""
     try:
-        products = await fake_store_api.get_products_by_category(category)
+        normalized_category = normalize_category(category)
+        products = await fake_store_api.get_products_by_category(normalized_category)
         if not products:
-            return f"No products in '{category}'"
+            return f"No products found in '{category}'. Available categories: electronics, jewelery, men's clothing, women's clothing"
         
-        return f"Products in '{category}':\n\n" + "\n".join(
+        return f"Products in '{normalized_category}':\n\n" + "\n".join(
             f"ID: {p['id']} | {p['title']} | ${p['price']} | {p['rating']['rate']}/5"
             for p in products
         )
@@ -75,7 +103,8 @@ async def search_products(
 ) -> str:
     """Search products with filters"""
     try:
-        products = await fake_store_api.get_products_by_category(category) if category else await fake_store_api.get_products()
+        normalized_category = normalize_category(category) if category else None
+        products = await fake_store_api.get_products_by_category(normalized_category) if normalized_category else await fake_store_api.get_products()
         results = products
         
         if query:
