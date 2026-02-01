@@ -89,7 +89,7 @@ Available tools:
 - remove_from_cart(product_id) - Remove items from cart
 - view_cart() - Show cart contents and total
 
-Be friendly, helpful, and concise. Format responses nicely for readability.""")
+Be friendly, helpful, and concise. Format responses nicely for readability. Make sure you use spacious tabular format to show product lists and comparisons.""")
         
         """
         Inject system message if not already present
