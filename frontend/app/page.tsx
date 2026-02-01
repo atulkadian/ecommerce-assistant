@@ -25,6 +25,18 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 1024);
+    };
+
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -187,11 +199,11 @@ export default function Home() {
       {/* Header */}
       <header
         className={`sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur-xl transition-all duration-300 shadow-sm ${
-          isSidebarOpen ? "lg:ml-72" : "ml-0"
+          isSidebarOpen ? "lg:ml-72" : ""
         }`}
       >
-        <div className="flex h-16 items-center justify-between px-6">
-          <div className="flex items-center gap-4">
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 hover:bg-accent rounded-lg transition-colors border border-transparent hover:border-border"
@@ -199,11 +211,11 @@ export default function Home() {
             >
               <Menu className="h-5 w-5 text-foreground" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/5 border border-primary/10">
-                <ShoppingCart className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-primary/5 border border-primary/10">
+                <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <h1 className="text-base font-semibold tracking-tight text-foreground">
                   Shopping Assistant
                 </h1>
@@ -220,28 +232,28 @@ export default function Home() {
       {/* Main Content */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${
-          isSidebarOpen ? "lg:ml-72" : "ml-0"
+          isSidebarOpen ? "lg:ml-72" : ""
         }`}
       >
         {messages.length === 0 ? (
           <>
-            <div className="flex-1 flex flex-col items-center justify-center px-6">
-              <div className="flex flex-col items-center space-y-5 text-center mb-10">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/5 border border-primary/10 shadow-sm">
-                  <ShoppingCart className="h-8 w-8 text-primary" />
+            <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8">
+              <div className="flex flex-col items-center space-y-4 sm:space-y-5 text-center mb-8 sm:mb-10">
+                <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-primary/5 border border-primary/10 shadow-sm">
+                  <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-semibold tracking-tight">
+                  <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">
                     Shopping Assistant
                   </h2>
-                  <p className="text-sm text-muted-foreground max-w-md">
+                  <p className="text-xs sm:text-sm text-muted-foreground max-w-md px-4">
                     Discover products and find exactly what you're looking for
                     with AI-powered assistance
                   </p>
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-3 w-full max-w-2xl mb-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full max-w-2xl mb-8 sm:mb-12">
                 {[
                   "Show me products under $50",
                   "What electronics are available?",
@@ -252,10 +264,10 @@ export default function Home() {
                     key={prompt}
                     onClick={() => handleSendMessage(prompt)}
                     disabled={isLoading}
-                    className="group rounded-xl border border-border bg-card p-4 text-left text-sm hover:bg-accent hover:shadow-sm disabled:opacity-50 transition-all"
+                    className="group rounded-xl border border-border bg-card p-3 sm:p-4 text-left text-sm hover:bg-accent hover:shadow-sm disabled:opacity-50 transition-all"
                   >
-                    <div className="flex gap-3">
-                      <Sparkles className="h-4 w-4 mt-0.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    <div className="flex gap-2 sm:gap-3">
+                      <Sparkles className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
                       <span className="text-foreground/90 group-hover:text-foreground">
                         {prompt}
                       </span>
@@ -265,12 +277,12 @@ export default function Home() {
               </div>
 
               {/* Input Area - Centered below suggestions */}
-              <div className="w-full max-w-4xl px-6 mb-4">
+              <div className="w-full max-w-4xl px-4 sm:px-6 mb-4">
                 <ChatInput
                   onSendMessage={handleSendMessage}
                   disabled={isLoading}
                 />
-                <div className="text-center mt-4 text-xs text-muted-foreground">
+                <div className="text-center mt-3 sm:mt-4 text-xs text-muted-foreground">
                   Crafted by Atul Kadian
                   {" • "}
                   <a
@@ -297,8 +309,8 @@ export default function Home() {
         ) : (
           <>
             <div className="flex-1 overflow-y-auto">
-              <div className="mx-auto max-w-4xl px-6 py-8">
-                <div className="space-y-6">
+              <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
+                <div className="space-y-4 sm:space-y-6">
                   {messages.map((msg, i) => (
                     <ChatMessage key={i} message={msg} />
                   ))}
@@ -310,12 +322,12 @@ export default function Home() {
 
             {/* Input Area - Fixed at bottom when messages exist */}
             <div className="bg-card/95 backdrop-blur-xl">
-              <div className="mx-auto max-w-4xl px-6 py-4">
+              <div className="mx-auto max-w-4xl px-4 sm:px-6 py-3 sm:py-4">
                 <ChatInput
                   onSendMessage={handleSendMessage}
                   disabled={isLoading}
                 />
-                <div className="text-center mt-3 text-xs text-muted-foreground">
+                <div className="text-center mt-2 sm:mt-3 text-xs text-muted-foreground">
                   Crafted by{" "}
                   <a
                     href="https://www.linkedin.com/in/atul-kadian/"

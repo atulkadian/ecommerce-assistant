@@ -58,6 +58,10 @@ export function Sidebar({
   const createNewConversation = async () => {
     // Just clear the current conversation to start a new one
     onSelectConversation(null);
+    // Close sidebar on mobile
+    if (window.innerWidth < 1024) {
+      setIsOpen(false);
+    }
   };
 
   const deleteConversation = async (id: number, e: React.MouseEvent) => {
@@ -77,6 +81,14 @@ export function Sidebar({
     }
   };
 
+  const handleSelectConversation = (id: number) => {
+    onSelectConversation(id);
+    // Close sidebar on mobile
+    if (window.innerWidth < 1024) {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <>
       {/* Overlay for mobile */}
@@ -89,7 +101,7 @@ export function Sidebar({
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-72 bg-card border-r border-border flex flex-col z-40 transition-transform duration-300 ease-in-out shadow-lg ${
+        className={`fixed left-0 top-0 h-full w-72 bg-background border-r border-border flex flex-col z-40 transition-transform duration-300 ease-in-out shadow-lg ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -135,7 +147,7 @@ export function Sidebar({
               {conversations.map((conv) => (
                 <div
                   key={conv.id}
-                  onClick={() => onSelectConversation(conv.id)}
+                  onClick={() => handleSelectConversation(conv.id)}
                   className={`group relative flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${
                     currentConversationId === conv.id
                       ? "bg-accent border border-border shadow-sm"
