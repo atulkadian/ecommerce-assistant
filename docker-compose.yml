@@ -9,6 +9,9 @@ services:
       - ./backend/.env
     environment:
       - FAKE_STORE_API_URL=https://fakestoreapi.com
+      - DATABASE_URL=sqlite:////app/data/conversations.db
+    volumes:
+      - db-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -21,12 +24,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - "3500:3000"
     depends_on:
       - backend
     restart: unless-stopped
+volumes:
+  db-data:
+    driver: local
 
 networks:
   default:
