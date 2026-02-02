@@ -17,6 +17,8 @@ from app.schemas import (
 )
 from app.agent import ShoppingAssistantAgent
 from app.database import get_db, init_db, Conversation, ChatMessage
+from app.vector_store import initialize_vector_store
+from app.api_client import fake_store_api
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,8 +56,17 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.on_event("startup")
-def startup():
+async def startup():
     init_db()
+    # Initialize vector store for semantic search
+    try:
+        logger.info("Initializing semantic search vector store...")
+        products = await fake_store_api.get_products()
+        initialize_vector_store(products)
+        logger.info("Vector store initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize vector store: {e}")
+        # Continue without vector store - will fallback to keyword search
 
 app.add_middleware(
     CORSMiddleware,

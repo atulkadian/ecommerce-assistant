@@ -5,6 +5,7 @@ An AI-powered shopping assistant built with FastAPI, LangGraph, and Next.js that
 ## Features
 
 - AI-powered product discovery using Google Gemini
+- **Semantic product search** with vector embeddings (understands intent, not just keywords)
 - Real-time streaming responses with Server-Sent Events
 - Persistent shopping cart with database storage
 - Persistent chat and conversation history cart with database storage
@@ -22,6 +23,8 @@ An AI-powered shopping assistant built with FastAPI, LangGraph, and Next.js that
 - LangGraph 0.2.55 - Agent orchestration
 - LangChain 0.3.12 - LLM integration
 - Google Gemini 2.5 Flash Lite - Language model
+- Sentence Transformers - Product embeddings for semantic search
+- FAISS - Vector similarity search
 - SQLAlchemy 2.0.23 - ORM
 - SQLite - Database
 - SlowAPI - Rate limiting
@@ -145,6 +148,15 @@ The applications will be available at:
 - Auth header sent with all API requests
 - Prevents abuse while maintaining simple setup
 - Clear modal explains authentication purpose to users
+
+### 9. **Semantic Product Search**
+
+- Uses `sentence-transformers` (all-MiniLM-L6-v2) for embeddings
+- FAISS vector store for fast similarity search
+- Pre-computes embeddings on startup (one-time cost)
+- Understands intent: "gift for tech lover" finds electronics
+- Fallback to keyword search if vector store unavailable
+- 384-dimensional embeddings balance speed and accuracy
 
 ## API Endpoints
 

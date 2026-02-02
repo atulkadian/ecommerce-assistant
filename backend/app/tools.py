@@ -3,6 +3,7 @@ from app.api_client import fake_store_api
 from typing import Optional, List
 from contextvars import ContextVar
 from sqlalchemy.orm import Session
+from app.vector_store import get_vector_store
 
 # Context variable to pass db session to tools
 db_session: ContextVar[Optional[Session]] = ContextVar('db_session', default=None)
@@ -117,15 +118,25 @@ async def search_products(
     min_price: Optional[float] = None,
     max_price: Optional[float] = None
 ) -> str:
-    """Search products with filters"""
+    """Search products with filters. Uses semantic search when query is provided for better understanding of user intent."""
     try:
         normalized_category = normalize_category(category) if category else None
         products = await fake_store_api.get_products_by_category(normalized_category) if normalized_category else await fake_store_api.get_products()
         results = products
         
+        # Use semantic search if query is provided and vector store is available
         if query:
-            q = query.lower()
-            results = [p for p in results if q in p['title'].lower() or q in p['description'].lower()]
+            vector_store = get_vector_store()
+            if vector_store.index is not None:
+                # Semantic search finds products by meaning, not just keywords
+                semantic_results = vector_store.search(query, top_k=20)
+                # Convert to same format as API products
+                product_ids = {p['id'] for p in semantic_results}
+                results = [p for p in products if p['id'] in product_ids]
+            else:
+                # Fallback to keyword search
+                q = query.lower()
+                results = [p for p in results if q in p['title'].lower() or q in p['description'].lower()]
         
         if min_price:
             results = [p for p in results if p['price'] >= min_price]
