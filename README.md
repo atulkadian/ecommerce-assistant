@@ -2,6 +2,12 @@
 
 An AI-powered shopping assistant built with FastAPI, LangGraph, and Next.js that helps users discover products through natural language conversations.
 
+## Demo
+
+<p align="center" width="100%">
+<video src="https://github.com/user-attachments/assets/4cc3581b-5685-4476-a0ce-71d3a102ec11" controls></video>
+</p>
+
 ## Features
 
 - AI-powered product discovery using Google Gemini
