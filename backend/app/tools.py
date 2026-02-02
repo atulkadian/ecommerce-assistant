@@ -129,10 +129,10 @@ async def search_products(
             vector_store = get_vector_store()
             if vector_store.index is not None:
                 # Semantic search finds products by meaning, not just keywords
-                semantic_results = vector_store.search(query, top_k=20)
-                # Convert to same format as API products
-                product_ids = {p['id'] for p in semantic_results}
-                results = [p for p in products if p['id'] in product_ids]
+                results = vector_store.search(query, top_k=20)
+                # Apply category filter if specified
+                if normalized_category:
+                    results = [p for p in results if p.get('category') == normalized_category]
             else:
                 # Fallback to keyword search
                 q = query.lower()

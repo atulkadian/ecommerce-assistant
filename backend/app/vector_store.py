@@ -3,10 +3,15 @@ Vector store for semantic product search using FAISS and sentence transformers.
 Pre-computes embeddings for all products to enable semantic search capabilities.
 """
 import logging
+import warnings
 from typing import List, Dict, Optional
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import faiss
+
+# Suppress transformers warnings during model loading
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', message='.*UNEXPECTED.*')
 
 logger = logging.getLogger(__name__)
 

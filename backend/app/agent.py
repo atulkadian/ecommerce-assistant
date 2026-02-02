@@ -47,11 +47,29 @@ class ShoppingAssistantAgent:
             for tool_call in last_message.tool_calls:
                 tool = next((t for t in tools if t.name == tool_call["name"]), None)
                 if tool:
-                    result = await tool.ainvoke(tool_call["args"])
+                    try:
+                        result = await tool.ainvoke(tool_call["args"])
+                        tool_messages.append(
+                            ToolMessage(
+                                content=str(result),
+                                tool_call_id=tool_call["id"],
+                                name=tool_call["name"]
+                            )
+                        )
+                    except Exception as e:
+                        tool_messages.append(
+                            ToolMessage(
+                                content=f"Error executing tool: {str(e)}",
+                                tool_call_id=tool_call["id"],
+                                name=tool_call["name"]
+                            )
+                        )
+                else:
                     tool_messages.append(
                         ToolMessage(
-                            content=str(result),
-                            tool_call_id=tool_call["id"]
+                            content=f"Tool '{tool_call['name']}' not found",
+                            tool_call_id=tool_call["id"],
+                            name=tool_call["name"]
                         )
                     )
         
