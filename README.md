@@ -62,8 +62,6 @@ echo "FAKE_STORE_API_URL=https://fakestoreapi.com" >> backend/.env
 echo "AUTH_KEY=your-secure-auth-key" >> backend/.env
 ```
 
-> **Note:** The `AUTH_KEY` is optional. If not set, authentication is disabled and anyone can use the API. Set it to enable authentication and prevent abuse.
-
 3. **Run with Docker**
 
 ```bash
@@ -143,7 +141,7 @@ The applications will be available at:
 
 ### 8. **Basic Authentication**
 
-- Optional authentication via `AUTH_KEY` environment variable
+- Mandatory authentication via `AUTH_KEY` environment variable
 - Token stored securely in browser localStorage
 - Auth header sent with all API requests
 - Prevents abuse while maintaining simple setup
@@ -174,7 +172,7 @@ The applications will be available at:
 
 - `GOOGLE_API_KEY` - Google Gemini API key (required)
 - `FAKE_STORE_API_URL` - Product API URL (default: https://fakestoreapi.com)
-- `AUTH_KEY` - Authentication key for API access (optional, disables auth if not set)
+- `AUTH_KEY` - Authentication key for API access
 - `DATABASE_URL` - SQLite database path (auto-configured)
 
 **Frontend:**
