@@ -9,7 +9,6 @@ services:
       - ./backend/.env
     environment:
       - FAKE_STORE_API_URL=https://fakestoreapi.com
-      - DATABASE_URL=sqlite:////app/data/conversations.db
     volumes:
       - db-data:/app/data
     restart: unless-stopped

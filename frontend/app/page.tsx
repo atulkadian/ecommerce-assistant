@@ -277,12 +277,18 @@ export default function Home() {
               </div>
 
               {/* Input Area - Centered below suggestions */}
-              <div className="w-full max-w-4xl px-4 sm:px-6 mb-4">
+              <div className="w-full max-w-4xl px-4 sm:px-6">
                 <ChatInput
                   onSendMessage={handleSendMessage}
                   disabled={isLoading}
                 />
-                <div className="text-center mt-3 sm:mt-4 text-xs text-muted-foreground">
+              </div>
+            </div>
+
+            {/* Footer - Fixed at bottom */}
+            <div className="bg-card/95 backdrop-blur-xl border-t border-border">
+              <div className="mx-auto max-w-4xl px-4 sm:px-6 py-3 sm:py-4">
+                <div className="text-center text-xs text-muted-foreground">
                   Crafted by Atul Kadian
                   {" • "}
                   <a
