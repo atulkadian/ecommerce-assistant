@@ -3,8 +3,9 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMe
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from app.tools import tools
+from app.tools import tools, db_session
 from app.config import get_settings
+from sqlalchemy.orm import Session
 
 settings = get_settings()
 
@@ -16,31 +17,12 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
 
 
-async def tool_node(state: AgentState):
-    """
-    Execute tools requested by the agent and return results.
-    """
-    messages = state["messages"]
-    last_message = messages[-1]
-    
-    tool_messages = []
-    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        for tool_call in last_message.tool_calls:
-            tool = next((t for t in tools if t.name == tool_call["name"]), None)
-            if tool:
-                result = await tool.ainvoke(tool_call["args"])
-                tool_messages.append(
-                    ToolMessage(
-                        content=str(result),
-                        tool_call_id=tool_call["id"]
-                    )
-                )
-    
-    return {"messages": tool_messages}
-
-
 class ShoppingAssistantAgent:
-    def __init__(self):
+    def __init__(self, db: Session = None):
+        self.db = db
+        if self.db:
+            db_session.set(self.db)
+        
         self.llm = ChatGoogleGenerativeAI(
             model="models/gemini-2.5-flash-lite",
             temperature=0.7,
@@ -49,6 +31,31 @@ class ShoppingAssistantAgent:
         )
         self.llm_with_tools = self.llm.bind_tools(tools)
         self.graph = self._build_graph()
+    
+    async def _tool_node(self, state: AgentState):
+        """
+        Execute tools requested by the agent and return results.
+        """
+        if self.db:
+            db_session.set(self.db)
+        
+        messages = state["messages"]
+        last_message = messages[-1]
+        
+        tool_messages = []
+        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+            for tool_call in last_message.tool_calls:
+                tool = next((t for t in tools if t.name == tool_call["name"]), None)
+                if tool:
+                    result = await tool.ainvoke(tool_call["args"])
+                    tool_messages.append(
+                        ToolMessage(
+                            content=str(result),
+                            tool_call_id=tool_call["id"]
+                        )
+                    )
+        
+        return {"messages": tool_messages}
         
     def _build_graph(self):
         """
@@ -57,7 +64,7 @@ class ShoppingAssistantAgent:
         workflow = StateGraph(AgentState)
         
         workflow.add_node("agent", self._call_model)
-        workflow.add_node("tools", tool_node)
+        workflow.add_node("tools", self._tool_node)
         workflow.set_entry_point("agent")
         
         workflow.add_conditional_edges(
@@ -112,6 +119,10 @@ Be friendly, helpful, and concise. Format responses nicely for readability. Make
         """
         Stream the agent's response by yielding small chunks of text.
         """
+        # Set db session in context for tools to use
+        if self.db:
+            db_session.set(self.db)
+        
         messages = []
         
         if conversation_history:

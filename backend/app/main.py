@@ -14,7 +14,7 @@ from app.schemas import (
     ChatRequest, ChatResponse, ConversationCreate, 
     ConversationResponse, ConversationDetail
 )
-from app.agent import agent
+from app.agent import ShoppingAssistantAgent
 from app.database import get_db, init_db, Conversation, ChatMessage
 
 logging.basicConfig(level=logging.INFO)
@@ -64,20 +64,19 @@ async def chat_stream(request: Request, chat_request: ChatRequest, db: Session =
         conversation_created = False
         
         try:
-            # Get existing conversation if provided
             if chat_request.conversation_id:
                 conversation = db.query(Conversation).filter(Conversation.id == chat_request.conversation_id).first()
                 if not conversation:
                     raise HTTPException(status_code=404, detail="Conversation not found")
             
-            # Convert conversation history to internal format
             history = []
             if chat_request.conversation_history:
                 history = [{"role": msg.role, "content": msg.content} for msg in chat_request.conversation_history]
             
-            # Stream response and collect full response
+            agent_instance = ShoppingAssistantAgent(db=db)
+            
             full_response = ""
-            async for chunk in agent.astream(chat_request.message, history):
+            async for chunk in agent_instance.astream(chat_request.message, history):
                 if chunk:
                     # Create conversation after first chunk is received (only for new conversations)
                     if not conversation and not conversation_created:
@@ -170,15 +169,18 @@ def delete_conversation(request: Request, conversation_id: int, db: Session = De
 
 @app.post("/chat", response_model=ChatResponse)
 @limiter.limit("20/minute")
-async def chat(request: Request, chat_request: ChatRequest):
+async def chat(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
     try:
         history = []
         if chat_request.conversation_history:
             history = [{"role": msg.role, "content": msg.content} for msg in chat_request.conversation_history]
         
+        # Create agent instance with db session
+        agent_instance = ShoppingAssistantAgent(db=db)
+        
         """ Collect all response chunks """
         full_response = ""
-        async for chunk in agent.astream(chat_request.message, history):
+        async for chunk in agent_instance.astream(chat_request.message, history):
             full_response += chunk
         
         return ChatResponse(response=full_response)

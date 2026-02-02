@@ -1,14 +1,30 @@
 from langchain_core.tools import tool
 from app.api_client import fake_store_api
 from typing import Optional, List
+from contextvars import ContextVar
+from sqlalchemy.orm import Session
 
-user_carts = {}
+# Context variable to pass db session to tools
+db_session: ContextVar[Optional[Session]] = ContextVar('db_session', default=None)
 
 
-def get_user_cart(user_id: str = "default") -> List[dict]:
-    if user_id not in user_carts:
-        user_carts[user_id] = []
-    return user_carts[user_id]
+def get_user_cart_from_db(user_id: str = "default") -> List[dict]:
+    """Get cart items from database"""
+    from app.database import CartItem
+    db = db_session.get()
+    if not db:
+        return []
+    
+    cart_items = db.query(CartItem).filter(CartItem.user_id == user_id).all()
+    return [
+        {
+            'product_id': item.product_id,
+            'title': item.title,
+            'price': float(item.price),
+            'quantity': item.quantity
+        }
+        for item in cart_items
+    ]
 
 
 def normalize_category(category: str) -> str:
@@ -168,20 +184,34 @@ async def compare_products(product_ids: List[int]) -> str:
 async def add_to_cart(product_id: int, quantity: int = 1) -> str:
     """Add product to cart"""
     try:
+        from app.database import CartItem
         product = await fake_store_api.get_product_details(product_id)
-        cart = get_user_cart()
+        db = db_session.get()
         
-        for item in cart:
-            if item['product_id'] == product_id:
-                item['quantity'] += quantity
-                return f"Updated: {product['title']} x{item['quantity']}"
+        if not db:
+            return "Error: Database not available"
         
-        cart.append({
-            'product_id': product_id,
-            'title': product['title'],
-            'price': product['price'],
-            'quantity': quantity
-        })
+        # Check if item already exists in cart
+        existing_item = db.query(CartItem).filter(
+            CartItem.user_id == "default",
+            CartItem.product_id == product_id
+        ).first()
+        
+        if existing_item:
+            existing_item.quantity += quantity
+            db.commit()
+            return f"Updated: {product['title']} x{existing_item.quantity}"
+        
+        # Add new item to cart
+        cart_item = CartItem(
+            user_id="default",
+            product_id=product_id,
+            title=product['title'],
+            price=str(product['price']),
+            quantity=quantity
+        )
+        db.add(cart_item)
+        db.commit()
         return f"Added: {product['title']} x{quantity} (${product['price']})"
     except Exception as e:
         return f"Error: {str(e)}"
@@ -191,11 +221,23 @@ async def add_to_cart(product_id: int, quantity: int = 1) -> str:
 async def remove_from_cart(product_id: int) -> str:
     """Remove product from cart"""
     try:
-        cart = get_user_cart()
-        before = len(cart)
-        cart[:] = [item for item in cart if item['product_id'] != product_id]
+        from app.database import CartItem
+        db = db_session.get()
         
-        return f"Removed product {product_id}" if len(cart) < before else f"Product {product_id} not in cart"
+        if not db:
+            return "Error: Database not available"
+        
+        cart_item = db.query(CartItem).filter(
+            CartItem.user_id == "default",
+            CartItem.product_id == product_id
+        ).first()
+        
+        if cart_item:
+            db.delete(cart_item)
+            db.commit()
+            return f"Removed product {product_id} from cart"
+        
+        return f"Product {product_id} not in cart"
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -204,16 +246,25 @@ async def remove_from_cart(product_id: int) -> str:
 async def view_cart() -> str:
     """View cart contents"""
     try:
-        cart = get_user_cart()
-        if not cart:
+        from app.database import CartItem
+        db = db_session.get()
+        
+        if not db:
+            return "Error: Database session not available"
+        
+        db.expire_all()
+        
+        cart_items = db.query(CartItem).filter(CartItem.user_id == "default").all()
+        
+        if not cart_items:
             return "Cart is empty"
         
         total = 0
         lines = ["## 🛒 Cart\n"]
-        for item in cart:
-            subtotal = item['price'] * item['quantity']
+        for item in cart_items:
+            subtotal = float(item.price) * item.quantity
             total += subtotal
-            lines.append(f"- {item['title']} x{item['quantity']} = ${subtotal:.2f}")
+            lines.append(f"- {item.title} x{item.quantity} = ${subtotal:.2f}")
         
         lines.append(f"\n**Total: ${total:.2f}**")
         return "\n".join(lines)
