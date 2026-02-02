@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Message } from "@/types/chat";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { MessageSkeleton } from "@/components/MessageSkeleton";
 import { Sidebar } from "@/components/Sidebar";
 import { Snowfall } from "@/components/Snowfall";
 import { ShoppingCart, Sparkles, Menu } from "lucide-react";
@@ -314,7 +314,7 @@ export default function Home() {
                   {messages.map((msg, i) => (
                     <ChatMessage key={i} message={msg} />
                   ))}
-                  {isLoading && <LoadingIndicator />}
+                  {isLoading && <MessageSkeleton />}
                   <div ref={messagesEndRef} />
                 </div>
               </div>

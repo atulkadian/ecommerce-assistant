@@ -24,7 +24,7 @@ export function Snowfall({ enabled }: SnowfallProps) {
       return;
     }
 
-    const flakes = Array.from({ length: 80 }, (_, i) => ({
+    const flakes = Array.from({ length: 100 }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
       animationDuration: 10 + Math.random() * 15,
