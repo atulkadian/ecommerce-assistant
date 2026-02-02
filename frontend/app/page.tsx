@@ -38,6 +38,17 @@ export default function Home() {
     }
   }, []);
 
+  // Show login modal after 3 seconds if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      const timer = setTimeout(() => {
+        setShowLoginModal(true);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     const handleResize = () => {
       setIsSidebarOpen(window.innerWidth >= 1024);
@@ -266,26 +277,24 @@ export default function Home() {
     <main className="flex min-h-screen flex-col bg-background">
       <Snowfall enabled={snowEnabled} />
 
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onLogin={handleLogin}
-      />
+      <LoginModal isOpen={showLoginModal} onLogin={handleLogin} />
 
-      <Sidebar
-        currentConversationId={currentConversationId}
-        onSelectConversation={handleSelectConversation}
-        isOpen={isSidebarOpen}
-        setIsOpen={setIsSidebarOpen}
-        refreshTrigger={refreshSidebar}
-        snowEnabled={snowEnabled}
-        setSnowEnabled={setSnowEnabled}
-      />
+      {isAuthenticated && (
+        <Sidebar
+          currentConversationId={currentConversationId}
+          onSelectConversation={handleSelectConversation}
+          isOpen={isSidebarOpen}
+          setIsOpen={setIsSidebarOpen}
+          refreshTrigger={refreshSidebar}
+          snowEnabled={snowEnabled}
+          setSnowEnabled={setSnowEnabled}
+        />
+      )}
 
       {/* Header */}
       <header
         className={`sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur-xl transition-all duration-300 shadow-sm ${
-          isSidebarOpen ? "lg:ml-72" : ""
+          isSidebarOpen && isAuthenticated ? "lg:ml-72" : ""
         }`}
       >
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
@@ -318,7 +327,7 @@ export default function Home() {
       {/* Main Content */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${
-          isSidebarOpen ? "lg:ml-72" : ""
+          isSidebarOpen && isAuthenticated ? "lg:ml-72" : ""
         }`}
       >
         {messages.length === 0 ? (

@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { X, Lock, Shield } from "lucide-react";
+import { Lock, Shield } from "lucide-react";
 
 interface LoginModalProps {
   isOpen: boolean;
-  onClose: () => void;
   onLogin: (key: string) => void;
 }
 
-export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
+export function LoginModal({ isOpen, onLogin }: LoginModalProps) {
   const [authKey, setAuthKey] = useState("");
   const [error, setError] = useState("");
 
@@ -28,7 +27,7 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative w-full max-w-md mx-4 bg-background rounded-2xl shadow-2xl border border-border">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
+        <div className="p-6 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/5 border border-primary/10">
               <Shield className="w-5 h-5 text-primary" />
@@ -37,12 +36,6 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
               Authentication Required
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Body */}

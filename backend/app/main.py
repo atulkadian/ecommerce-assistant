@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from dotenv import load_dotenv
 import json
 import asyncio
 import logging
@@ -23,15 +24,16 @@ from app.api_client import fake_store_api
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load auth key from environment
-AUTH_KEY = os.getenv("AUTH_KEY", "")
+# Load environment variables
+load_dotenv()
+
+# Load auth key from environment (required)
+AUTH_KEY = os.getenv("AUTH_KEY")
+if not AUTH_KEY:
+    raise ValueError("AUTH_KEY environment variable must be set")
 
 def verify_auth(authorization: Optional[str] = Header(None)):
     """Verify authentication token."""
-    if not AUTH_KEY:
-        # If no auth key is configured, allow all requests
-        return True
-    
     if not authorization:
         raise HTTPException(status_code=401, detail="Authentication required")
     
@@ -78,7 +80,7 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root():
+async def root(authenticated: bool = Depends(verify_auth)):
     return {
         "message": "E-Commerce Shopping Assistant API",
         "status": "active"
