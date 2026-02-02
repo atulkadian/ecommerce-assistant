@@ -116,15 +116,21 @@ Available tools:
 - remove_from_cart(product_id) - Remove items from cart
 - view_cart() - Show cart contents and total
 
+IMPORTANT: After using any tool, you MUST provide a helpful text response to the user. 
+Never return an empty response. Always acknowledge the action and present the results in a friendly, conversational way.
+
 Be friendly, helpful, and concise. Format responses nicely for readability. Make sure you use spacious tabular format to show product lists and comparisons.""")
         
-        """
-        Inject system message if not already present
-        """
         if not any(isinstance(m, HumanMessage) and "shopping assistant" in m.content.lower() for m in messages[:1]):
             messages = [system_message] + list(messages)
         
         response = await self.llm_with_tools.ainvoke(messages)
+        
+        if not response.content and not getattr(response, 'tool_calls', None):
+            logger.warning("LLM returned empty response with no tool calls. Token usage: %s", 
+                         response.response_metadata.get('usage_metadata'))
+            response.content = "I understand your request. Let me help you with that."
+        
         return {"messages": [response]}
     
     def _should_continue(self, state: AgentState):
