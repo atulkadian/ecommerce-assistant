@@ -6,7 +6,9 @@ from langgraph.graph.message import add_messages
 from app.tools import tools, db_session
 from app.config import get_settings
 from sqlalchemy.orm import Session
+import logging
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -153,19 +155,28 @@ Be friendly, helpful, and concise. Format responses nicely for readability. Make
         messages.append(HumanMessage(content=message))
         
         final_messages = []
+        last_ai_message = None
+        
         async for event in self.graph.astream({"messages": messages}):
             for node_name, state_update in event.items():
+                logger.info(f"Graph event - node: {node_name}, messages: {len(state_update.get('messages', []))}")
                 if "messages" in state_update:
                     final_messages = state_update["messages"]
+                    for msg in reversed(state_update["messages"]):
+                        if isinstance(msg, AIMessage):
+                            last_ai_message = msg
+                            logger.info(f"Found AI message - has content: {bool(msg.content)}, has tool_calls: {bool(getattr(msg, 'tool_calls', None))}")
+                            break
         
-        if final_messages:
-            for msg in reversed(final_messages):
-                if isinstance(msg, AIMessage) and msg.content:
-                    content = msg.content
-                    chunk_size = 5 
-                    for i in range(0, len(content), chunk_size):
-                        yield content[i:i+chunk_size]
-                    break
+        if last_ai_message and last_ai_message.content:
+            content = last_ai_message.content
+            logger.info(f"Streaming response: {len(content)} characters")
+            chunk_size = 5 
+            for i in range(0, len(content), chunk_size):
+                yield content[i:i+chunk_size]
+        else:
+            logger.warning(f"No AI response content found. Last AI message: {last_ai_message}")
+            yield "I apologize, but I couldn't generate a response. Please try again."
 
 
 agent = ShoppingAssistantAgent()
