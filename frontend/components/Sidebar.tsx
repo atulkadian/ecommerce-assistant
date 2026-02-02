@@ -21,6 +21,7 @@ interface SidebarProps {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const AUTH_KEY_STORAGE = "shopping_assistant_auth_key";
 
 export function Sidebar({
   currentConversationId,
@@ -33,9 +34,20 @@ export function Sidebar({
 }: SidebarProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
+  const getAuthHeaders = (): HeadersInit => {
+    const authKey = localStorage.getItem(AUTH_KEY_STORAGE);
+    const headers: HeadersInit = {};
+    if (authKey) {
+      headers["Authorization"] = `Bearer ${authKey}`;
+    }
+    return headers;
+  };
+
   const loadConversations = async () => {
     try {
-      const res = await fetch(`${API_URL}/conversations`);
+      const res = await fetch(`${API_URL}/conversations`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setConversations(data);
@@ -69,6 +81,7 @@ export function Sidebar({
     try {
       const res = await fetch(`${API_URL}/conversations/${id}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         setConversations(conversations.filter((c) => c.id !== id));

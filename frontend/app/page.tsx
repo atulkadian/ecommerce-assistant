@@ -7,11 +7,13 @@ import { ChatInput } from "@/components/ChatInput";
 import { MessageSkeleton } from "@/components/MessageSkeleton";
 import { Sidebar } from "@/components/Sidebar";
 import { Snowfall } from "@/components/Snowfall";
+import { LoginModal } from "@/components/LoginModal";
 import { ShoppingCart, Sparkles, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const AUTH_KEY_STORAGE = "shopping_assistant_auth_key";
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -22,7 +24,19 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [refreshSidebar, setRefreshSidebar] = useState(0);
   const [snowEnabled, setSnowEnabled] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [authKey, setAuthKey] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check for stored auth key on mount
+  useEffect(() => {
+    const storedKey = localStorage.getItem(AUTH_KEY_STORAGE);
+    if (storedKey) {
+      setAuthKey(storedKey);
+      setIsAuthenticated(true);
+    }
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -42,7 +56,18 @@ export default function Home() {
 
   const loadConversation = async (id: number) => {
     try {
-      const res = await fetch(`${API_URL}/conversations/${id}`);
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (authKey) {
+        headers["Authorization"] = `Bearer ${authKey}`;
+      }
+
+      const res = await fetch(`${API_URL}/conversations/${id}`, { headers });
+
+      if (res.status === 401) {
+        handleAuthError();
+        return;
+      }
+
       if (res.ok) {
         const data = await res.json();
         setMessages(
@@ -59,6 +84,46 @@ export default function Home() {
     }
   };
 
+  const handleAuthError = () => {
+    setIsAuthenticated(false);
+    setAuthKey(null);
+    localStorage.removeItem(AUTH_KEY_STORAGE);
+    setShowLoginModal(true);
+    toast.error("Authentication failed", {
+      description: "Please log in again",
+    });
+  };
+
+  const handleLogin = async (key: string) => {
+    // Test the auth key with a simple request
+    try {
+      const res = await fetch(`${API_URL}/conversations`, {
+        headers: {
+          Authorization: `Bearer ${key}`,
+        },
+      });
+
+      if (res.ok || res.status === 401) {
+        // Store and use the key
+        localStorage.setItem(AUTH_KEY_STORAGE, key);
+        setAuthKey(key);
+        setIsAuthenticated(true);
+        setShowLoginModal(false);
+
+        if (res.status === 401) {
+          toast.error("Invalid authentication key", {
+            description: "Please check your key and try again",
+          });
+          handleAuthError();
+        } else {
+          toast.success("Logged in successfully");
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to verify authentication key");
+    }
+  };
+
   const handleSelectConversation = (id: number | null) => {
     if (id === null) {
       setMessages([]);
@@ -69,6 +134,12 @@ export default function Home() {
   };
 
   const handleSendMessage = async (content: string) => {
+    // Check authentication before sending
+    if (!isAuthenticated || !authKey) {
+      setShowLoginModal(true);
+      return;
+    }
+
     const userMessage: Message = {
       role: "user",
       content,
@@ -84,13 +155,22 @@ export default function Home() {
 
       const response = await fetch(`${API_URL}/chat/stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authKey}`,
+        },
         body: JSON.stringify({
           message: content,
           conversation_id: currentConversationId,
           conversation_history: history,
         }),
       });
+
+      if (response.status === 401) {
+        handleAuthError();
+        setIsLoading(false);
+        return;
+      }
 
       if (!response.ok) throw new Error("Failed to get response");
 
@@ -185,6 +265,12 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col bg-background">
       <Snowfall enabled={snowEnabled} />
+
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLogin}
+      />
 
       <Sidebar
         currentConversationId={currentConversationId}

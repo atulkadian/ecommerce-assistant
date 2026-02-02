@@ -8,6 +8,7 @@ An AI-powered shopping assistant built with FastAPI, LangGraph, and Next.js that
 - Real-time streaming responses with Server-Sent Events
 - Persistent shopping cart with database storage
 - Persistent chat and conversation history cart with database storage
+- Basic authentication to prevent abuse
 - Responsive design for mobile, tablet, and desktop
 - Dark/light theme support
 - Rate limiting
@@ -55,7 +56,10 @@ cd ecommerce-assistant
 # Create backend .env file
 echo "GOOGLE_API_KEY=your-api-key-here" > backend/.env
 echo "FAKE_STORE_API_URL=https://fakestoreapi.com" >> backend/.env
+echo "AUTH_KEY=your-secure-auth-key" >> backend/.env
 ```
+
+> **Note:** The `AUTH_KEY` is optional. If not set, authentication is disabled and anyone can use the API. Set it to enable authentication and prevent abuse.
 
 3. **Run with Docker**
 
@@ -134,6 +138,14 @@ The applications will be available at:
 - Sidebar auto-closes on mobile, stays open on desktop
 - Touch-friendly UI elements
 
+### 8. **Basic Authentication**
+
+- Optional authentication via `AUTH_KEY` environment variable
+- Token stored securely in browser localStorage
+- Auth header sent with all API requests
+- Prevents abuse while maintaining simple setup
+- Clear modal explains authentication purpose to users
+
 ## API Endpoints
 
 | Endpoint              | Method | Description         | Rate Limit |
@@ -150,6 +162,7 @@ The applications will be available at:
 
 - `GOOGLE_API_KEY` - Google Gemini API key (required)
 - `FAKE_STORE_API_URL` - Product API URL (default: https://fakestoreapi.com)
+- `AUTH_KEY` - Authentication key for API access (optional, disables auth if not set)
 - `DATABASE_URL` - SQLite database path (auto-configured)
 
 **Frontend:**
@@ -159,3 +172,5 @@ The applications will be available at:
 ## License
 
 MIT
+
+---

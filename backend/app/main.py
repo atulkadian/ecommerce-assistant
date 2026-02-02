@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.orm import Session
@@ -9,7 +9,8 @@ from slowapi.errors import RateLimitExceeded
 import json
 import asyncio
 import logging
-from typing import List
+import os
+from typing import List, Optional
 from app.schemas import (
     ChatRequest, ChatResponse, ConversationCreate, 
     ConversationResponse, ConversationDetail
@@ -19,6 +20,29 @@ from app.database import get_db, init_db, Conversation, ChatMessage
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Load auth key from environment
+AUTH_KEY = os.getenv("AUTH_KEY", "")
+
+def verify_auth(authorization: Optional[str] = Header(None)):
+    """Verify authentication token."""
+    if not AUTH_KEY:
+        # If no auth key is configured, allow all requests
+        return True
+    
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Check if the header starts with "Bearer "
+    if authorization.startswith("Bearer "):
+        token = authorization[7:]
+    else:
+        token = authorization
+    
+    if token != AUTH_KEY:
+        raise HTTPException(status_code=401, detail="Invalid authentication key")
+    
+    return True
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
@@ -57,7 +81,12 @@ async def health_check():
 
 @app.post("/chat/stream")
 @limiter.limit("20/minute")
-async def chat_stream(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
+async def chat_stream(
+    request: Request, 
+    chat_request: ChatRequest, 
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(verify_auth)
+):
     """Stream AI responses in real-time using Server-Sent Events."""
     async def event_generator():
         conversation = None
@@ -133,7 +162,12 @@ async def chat_stream(request: Request, chat_request: ChatRequest, db: Session =
 
 @app.post("/conversations", response_model=ConversationResponse)
 @limiter.limit("30/minute")
-def create_conversation(request: Request, conv: ConversationCreate, db: Session = Depends(get_db)):
+def create_conversation(
+    request: Request, 
+    conv: ConversationCreate, 
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(verify_auth)
+):
     conversation = Conversation(title=conv.title)
     db.add(conversation)
     db.commit()
@@ -143,13 +177,22 @@ def create_conversation(request: Request, conv: ConversationCreate, db: Session 
 
 @app.get("/conversations", response_model=List[ConversationResponse])
 @limiter.limit("60/minute")
-def list_conversations(request: Request, db: Session = Depends(get_db)):
+def list_conversations(
+    request: Request, 
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(verify_auth)
+):
     return db.query(Conversation).order_by(Conversation.updated_at.desc()).all()
 
 
 @app.get("/conversations/{conversation_id}", response_model=ConversationDetail)
 @limiter.limit("60/minute")
-def get_conversation(request: Request, conversation_id: int, db: Session = Depends(get_db)):
+def get_conversation(
+    request: Request, 
+    conversation_id: int, 
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(verify_auth)
+):
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -158,7 +201,12 @@ def get_conversation(request: Request, conversation_id: int, db: Session = Depen
 
 @app.delete("/conversations/{conversation_id}")
 @limiter.limit("30/minute")
-def delete_conversation(request: Request, conversation_id: int, db: Session = Depends(get_db)):
+def delete_conversation(
+    request: Request, 
+    conversation_id: int, 
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(verify_auth)
+):
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -169,7 +217,12 @@ def delete_conversation(request: Request, conversation_id: int, db: Session = De
 
 @app.post("/chat", response_model=ChatResponse)
 @limiter.limit("20/minute")
-async def chat(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
+async def chat(
+    request: Request, 
+    chat_request: ChatRequest, 
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(verify_auth)
+):
     try:
         history = []
         if chat_request.conversation_history:
