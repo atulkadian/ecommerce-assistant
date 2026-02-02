@@ -4,9 +4,9 @@ An AI-powered shopping assistant built with FastAPI, LangGraph, and Next.js that
 
 ## Demo
 
-<p align="center" width="100%">
-<video src="https://github.com/user-attachments/assets/4cc3581b-5685-4476-a0ce-71d3a102ec11" controls></video>
-</p>
+https://github.com/user-attachments/assets/fae2b15a-c810-4f5b-a189-8d6bb407deea
+
+
 
 ## Features
 
